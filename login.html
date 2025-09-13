@@ -1,0 +1,429 @@
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Student Health Passport</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #e0f7fa;
+    margin: 0;
+    padding: 0;
+  }
+  header {
+    background-color: #006064;
+    color: #fff;
+    padding: 1em;
+    text-align: center;
+  }
+  nav {
+    display: flex;
+    justify-content: center;
+    background-color: #004d40;
+  }
+  nav button {
+    background: none;
+    border: none;
+    color: #fff;
+    padding: 1em;
+    cursor: pointer;
+    font-size: 1em;
+  }
+  nav button:hover {
+    background-color: #002f2f;
+  }
+  main {
+    padding: 20px;
+  }
+  .section {
+    display: none;
+    max-width: 900px;
+    margin: auto;
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  }
+  .active {
+    display: block;
+  }
+  h2 {
+    color: #006064;
+  }
+  input, textarea, select {
+    width: 100%;
+    padding: 8px;
+    margin-top: 8px;
+    margin-bottom: 16px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
+  button {
+    background-color: #006064;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 10px;
+  }
+  button:hover {
+    background-color: #00363a;
+  }
+  #passportPreview {
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin-top: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  .record {
+    border: 1px solid #ddd;
+    padding: 8px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+  }
+  #welcomeMsg {
+    font-size: 1.2em;
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Student Health Passport</h1>
+</header>
+
+<nav>
+  <button onclick="showSection('register')">Register</button>
+  <button onclick="showSection('login')">Login</button>
+  <button onclick="showSection('profile')">Profile</button>
+  <button onclick="showSection('records')">Health Records</button>
+  <button onclick="showSection('appointments')">Appointments</button>
+  <button onclick="generatePDF()">Download Passport</button>
+  <button onclick="logout()">Logout</button>
+</nav>
+
+<main>
+
+  
+  <div id="register" class="section">
+    <h2>Register</h2>
+    <input type="text" id="regName" placeholder="Full Name" />
+    <input type="email" id="regEmail" placeholder="Email" />
+    <input type="password" id="regPassword" placeholder="Password" />
+    <button onclick="register()">Register</button>
+  </div>
+
+  
+  <div id="login" class="section">
+    <h2>Login</h2>
+    <input type="email" id="loginEmail" placeholder="Email" />
+    <input type="password" id="loginPassword" placeholder="Password" />
+    <button onclick="login()">Login</button>
+    <div id="loginMsg" style="color:red; margin-top:10px;"></div>
+  </div>
+
+  
+  <div id="profile" class="section">
+    <h2>My Profile</h2>
+    <div id="profileInfo"></div>
+    <h3>Update Name</h3>
+    <input type="text" id="updateName" placeholder="Full Name" />
+    <button onclick="updateProfile()">Update</button>
+  </div>
+
+  
+  <div id="records" class="section">
+    <h2>Health Records</h2>
+    <div id="vaccinesList"></div>
+    <h3>Add Vaccination Record</h3>
+    <input type="text" id="vaccineName" placeholder="Vaccine Name" />
+    <input type="date" id="vaccineDate" />
+    <button onclick="addVaccine()">Add Vaccine</button>
+    <h3>Medical History</h3>
+    <textarea id="medicalHistory" rows="4" placeholder="Medical History"></textarea>
+    <h3>Allergies</h3>
+    <textarea id="allergies" rows="2" placeholder="Allergies"></textarea>
+    <button onclick="saveHealthRecords()">Save Records</button>
+  </div>
+
+  
+  <div id="appointments" class="section">
+    <h2>Appointments</h2>
+    <div id="appointmentsList"></div>
+    <h3>Schedule New Appointment</h3>
+    <input type="date" id="appointmentDate" />
+    <button onclick="scheduleAppointment()">Schedule</button>
+  </div>
+
+  
+  <div id="passportPreviewSection" class="section">
+    <h2>Health Passport Preview</h2>
+    <div id="passportPreview"></div>
+  </div>
+
+</main>
+
+<script>
+  const { jsPDF } = window.jspdf;
+
+  
+  let users = [];
+  let currentUser = null;
+
+  
+  function showSection(id) {
+    document.querySelectorAll('.section').forEach(s => s.style.display='none');
+    document.getElementById(id).style.display='block';
+
+    
+    if(id==='profile' && currentUser) loadProfile();
+    if(id==='records' && currentUser) loadRecords();
+    if(id==='appointments' && currentUser) loadAppointments();
+    if(id==='passportPreviewSection') generatePreview();
+  }
+
+  
+  function register() {
+    const name = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value.trim();
+
+    if(!name || !email || !password) {
+      alert('Fill all fields');
+      return;
+    }
+    if(users.some(u => u.email===email)){
+      alert('Email already registered');
+      return;
+    }
+
+    users.push({ name, email, password, healthRecords: {vaccinations:[], medicalHistory:'', allergies:''}, appointments: [] });
+    alert('Registration successful. Please login.');
+    showSection('login');
+  }
+
+  
+  function login() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value.trim();
+
+    const user = users.find(u => u.email===email && u.password===password);
+    if(user) {
+      currentUser = user;
+      document.getElementById('loginMsg').innerText='';
+      alert('Login successful');
+      showSection('profile');
+    } else {
+      document.getElementById('loginMsg').innerText='Invalid email or password.';
+    }
+  }
+
+  
+  function logout() {
+    currentUser = null;
+    showSection('login');
+  }
+
+  
+  function loadProfile() {
+    document.getElementById('profileInfo').innerHTML = `
+      <p><strong>Name:</strong> ${currentUser.name}</p>
+      <p><strong>Email:</strong> ${currentUser.email}</p>
+    `;
+    document.getElementById('updateName').value = currentUser.name;
+  }
+
+  
+  function updateProfile() {
+    const newName = document.getElementById('updateName').value.trim();
+    if(newName) {
+      currentUser.name = newName;
+      alert('Profile updated.');
+      loadProfile();
+    }
+  }
+
+  
+  function loadRecords() {
+    const listDiv = document.getElementById('vaccinesList');
+    if(currentUser.healthRecords.vaccinations.length===0) {
+      listDiv.innerHTML='<p>No vaccination records.</p>';
+    } else {
+      listDiv.innerHTML='';
+      currentUser.healthRecords.vaccinations.forEach((v,i)=>{
+        listDiv.innerHTML+=`<div class="record"><strong>${v.name}</strong> on ${v.date} <button onclick="removeVaccine(${i})">Remove</button></div>`;
+      });
+    }
+    document.getElementById('medicalHistory').value = currentUser.healthRecords.medicalHistory;
+    document.getElementById('allergies').value = currentUser.healthRecords.allergies;
+  }
+
+  
+  function addVaccine() {
+    const name = document.getElementById('vaccineName').value.trim();
+    const date = document.getElementById('vaccineDate').value;
+    if(!name || !date) {
+      alert('Fill all vaccine details.');
+      return;
+    }
+    currentUser.healthRecords.vaccinations.push({ name, date });
+    loadRecords();
+    document.getElementById('vaccineName').value='';
+    document.getElementById('vaccineDate').value='';
+  }
+
+  
+  function removeVaccine(index) {
+    currentUser.healthRecords.vaccinations.splice(index,1);
+    loadRecords();
+  }
+
+  
+  function saveHealthRecords() {
+    currentUser.healthRecords.medicalHistory = document.getElementById('medicalHistory').value;
+    currentUser.healthRecords.allergies = document.getElementById('allergies').value;
+    alert('Health records saved.');
+  }
+
+  
+  function loadAppointments() {
+    const listDiv = document.getElementById('appointmentsList');
+    if(currentUser.appointments.length===0) {
+      listDiv.innerHTML='<p>No appointments scheduled.</p>';
+    } else {
+      listDiv.innerHTML='';
+      currentUser.appointments.forEach((a,i)=>{
+        listDiv.innerHTML+=`<div class="record"><strong>${a.date}</strong> - Status: ${a.status} <button onclick="cancelAppointment(${i})">Cancel</button></div>`;
+      });
+    }
+  }
+
+
+  function scheduleAppointment() {
+    const date = document.getElementById('appointmentDate').value;
+    if(!date) {
+      alert('Select a date.');
+      return;
+    }
+    currentUser.appointments.push({ date, status:'Scheduled' });
+    loadAppointments();
+    document.getElementById('appointmentDate').value='';
+  }
+
+  
+  function cancelAppointment(index) {
+    if(confirm('Cancel this appointment?')) {
+      currentUser.appointments.splice(index,1);
+      loadAppointments();
+    }
+  }
+
+  
+  async function generatePDF() {
+    if(!currentUser) {
+      alert('Please login first.');
+      return;
+    }
+    generatePreview(); 
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(16);
+    doc.text("Student Health Passport", 80, 20);
+    doc.setFontSize(12);
+    doc.text(`Name: ${currentUser.name}`, 20, 40);
+    doc.text(`Email: ${currentUser.email}`, 20, 50);
+    let y = 60;
+
+    
+    doc.text("Vaccination Records:", 20, y);
+    y += 10;
+    if(currentUser.healthRecords.vaccinations.length===0){
+      doc.text("No vaccination records.", 30, y);
+      y+=10;
+    } else {
+      currentUser.healthRecords.vaccinations.forEach(v => {
+        doc.text(`- ${v.name} on ${v.date}`, 30, y);
+        y+=8;
+      });
+    }
+
+
+    y+=4;
+    doc.text("Medical History:", 20, y);
+    y+=8;
+    const medHist = currentUser.healthRecords.medicalHistory || 'N/A';
+    doc.text(medHist, 30, y, {maxWidth: 150});
+    y+=20;
+
+    
+    doc.text("Allergies:", 20, y);
+    y+=8;
+    const allergyText = currentUser.healthRecords.allergies || 'N/A';
+    doc.text(allergyText, 30, y, {maxWidth: 150});
+    y+=20;
+
+    
+    y+=4;
+    doc.text("Appointments:", 20, y);
+    y+=8;
+    if(currentUser.appointments.length===0){
+      doc.text("No appointments scheduled.", 30, y);
+    } else {
+      currentUser.appointments.forEach(a => {
+        doc.text(`- ${a.date} (${a.status})`, 30, y);
+        y+=8;
+      });
+    }
+
+    
+    doc.save('Health_Passport.pdf');
+  }
+
+  
+  function generatePreview() {
+    const container = document.getElementById('passportPreview');
+    if(!currentUser) {
+      container.innerHTML = '<p>Please login to view passport.</p>';
+      return;
+    }
+    
+    let html = `
+      <h3 style="text-align:center;">Student Health Passport</h3>
+      <p><strong>Name:</strong> ${currentUser.name}</p>
+      <p><strong>Email:</strong> ${currentUser.email}</p>
+      <h4>Vaccination Records:</h4>
+      <ul>`;
+    if(currentUser.healthRecords.vaccinations.length===0) {
+      html += '<li>No vaccination records.</li>';
+    } else {
+      currentUser.healthRecords.vaccinations.forEach(v => {
+        html += `<li>${v.name} on ${v.date}</li>`;
+      });
+    }
+    html += `</ul>
+      <h4>Medical History:</h4>
+      <p>${currentUser.healthRecords.medicalHistory || 'N/A'}</p>
+      <h4>Allergies:</h4>
+      <p>${currentUser.healthRecords.allergies || 'N/A'}</p>
+      <h4>Appointments:</h4>
+      <ul>`;
+    if(currentUser.appointments.length===0) {
+      html += '<li>No appointments scheduled.</li>';
+    } else {
+      currentUser.appointments.forEach(a => {
+        html += `<li>${a.date} (${a.status})</li>`;
+      });
+    }
+    html += `</ul>`;
+    container.innerHTML = html;
+  }
+
+  
+  showSection('login');
+</script>
+
+</body>
+</html>
