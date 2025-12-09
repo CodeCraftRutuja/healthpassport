@@ -58,5 +58,7 @@ It focuses on keeping important health details organised and easily sharable for
 ```text
 healthpassport/
 │── index.html       # Main single-page application
+│── style.css        # Separated styles
+│── script.js        # Separated JS logic
 │── README.md        # Project documentation
-
+│── screenshots/     # UI screenshots
